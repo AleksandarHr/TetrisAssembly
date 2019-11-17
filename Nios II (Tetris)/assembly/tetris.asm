@@ -12,29 +12,69 @@ main:
 
 ; BEGIN:reset_game
 reset_game:
-	# clear the GSA and LEDS
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	# clear score
+	stw zero, SCORE(zero)
+
+	# clear the GSA
 	stw zero, GSA(zero)
-	stw zero, LEDS(zero)
 	stw zero, GSA+4(zero)
-	stw zero, LEDS+4(zero)
 	stw zero, GSA+8(zero)
+
+	# clear LEDS
+	stw zero, LEDS(zero)
+	stw zero, LEDS+4(zero)
 	stw zero, LEDS+8(zero)
 
+	# clear SEVEN_SEGS
+	stw zero, SEVEN_SEGS(zero)
+	stw zero, SEVEN_SEGS+4(zero)
+	stw zero, SEVEN_SEGS+8(zero)
+	stw zero, SEVEN_SEGS+12(zero)
+
+	# generate and draw a random tetromino
 	call generate_tetromino
 
-
+	stw  ra, 0(sp)
+	addi sp, sp, 4
+	ret
 ; END:reset_game
 
 
 ; BEGIN:detect_full_line
 detect_full_line:
 	addi v0, zero, 8	# default return value for v0 - y=8, smallest y-coordinate that is too high fit on the screen
-	add  t0, zero, zero	# x-iterator
-	add	 t1, zero, zero	# y-iterator
-y_loop:
+	addi t0, zero, 1
+	addi a0, zero, -1	# x-iterator
+	addi a1, zero, -1	# y-iterator
+	addi sp, sp, -12
 
+y_loop:
+	addi a1, a1, 1
+	beq  a1, v0, return_detect_full_line
+
+x_loop:
+	addi a0, a0, 1
+
+	stw  a0, 0(sp)
+	stw  a1, 4(sp)
+	stw  v0, 8(sp)
+
+	call get_gsa
+
+	ldw  a0, 0(sp)
+	ldw  a1, 4(sp)
+	ldw  v0, 8(sp)
+
+	add  t0, zero, 11
+	blt  a0, t0, x_loop
+	addi a0, zero, -1
+	jmpi y_loop
 
 return_detect_full_line:
+	addi sp, sp, 12
 	ret
 ; END:detect_full_line
 
