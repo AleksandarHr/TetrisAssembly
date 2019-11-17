@@ -273,11 +273,7 @@ collision_detection:
 	beq a0, t0, So_COL
 	jmpi OVERLAP
 
-	slli s2, s2, 4 #s2 = 16*s2; offset by type * 48
-	add s5, zero, s2
 
-	slli s3, s3, 2
-	add s5, s5, s3
 
 E_COL:
 	addi s0, s0, 1			# update x-coordinate for movement EAST
@@ -295,17 +291,23 @@ So_COL:
 	beq  s0, t0, COLLISION
 OVERLAP:
 
-	#call set_gsa on Anchor
-	add a2, s4, zero #p-value
+	slli s2, s2, 4 			#s2 = 16*s2; offset by type * 16
+	add s5, zero, s2
+
+	slli s3, s3, 2			#s2 = 16*s2; offset by type * 4
+	add s5, s5, s3
+
+	#call get_gsa on Anchor
+	add a2, s4, zero 		#p-value
 	add a0, s0, zero
 	add a1, s1, zero
 	call get_gsa
 	beq v0, s6, COLLISION	# check if anchor point has been moved so that it collides
 
-	#call set_gsa on offset 0
-	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
-	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
-	ldw t0, 0(t0) #x first offset
+	#call get_gsa on offset 0
+	ldw t0, DRAW_Ax(s5) 	#address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) 	#address of Array of Y-offset
+	ldw t0, 0(t0) 			#x first offset
 	ldw t1, 0(t1)
 	
 	add a2, s4, zero #p-value
@@ -314,9 +316,9 @@ OVERLAP:
 	call get_gsa
 	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
 
-	#call set_gsa on offset 1
-	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
-	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
+	#call get_gsa on offset 1
+	ldw t0, DRAW_Ax(s5) 	#address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) 	#address of Array of Y-offset
 	ldw t0, 4(t0) #x offset
 	ldw t1, 4(t1)
 	
@@ -326,9 +328,9 @@ OVERLAP:
 	call set_gsa
 	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
 
-	#call set_gsa on offset 2
-	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
-	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
+	#call get_gsa on offset 2
+	ldw t0, DRAW_Ax(s5)		#address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) 	#address of Array of Y-offset
 	ldw t0, 8(t0) #x  offset
 	ldw t1, 8(t1)
 
@@ -355,7 +357,7 @@ NO_COLLISION:
 
 COLLISION:
 	# if collision or an overlap was detected, return type of collision/overlap
-	add v0, zero, s4	# store collision type in return register
+	add v0, zero, s4		# store collision type in return register
 
 	ldw  s0, 0(sp)
 	ldw  s1, 4(sp)
@@ -371,6 +373,149 @@ COLLISION:
 
 ;END:collision_detection
 
+
+
+;BEGIN:act
+act:
+	addi sp, sp, -8
+	stw ra, 0(sp)
+	stw s0, 4(sp)
+	
+	add s0, a0, zero		#action type
+	addi t0, zero, 0x01
+	beq t0, s0, moveL
+
+	addi t0, zero, 0x02
+	beq t0, s0, rotL
+
+	addi t0, zero, 0x04
+	beq t0, s0, reset
+
+	addi t0, zero, 0x08
+	beq t0, s0, rotR
+	
+	addi t0, zero, 0x10
+	beq t0, s0, moveR
+	
+	addi t0, zero, 0x20	
+	beq t0, s0, moveD
+
+moveL:
+	# check if collision left
+	add a0, zero, zero
+	call collision_detection
+
+	#TODO STACK
+	ldw ra, 0(sp)
+	stw s0, 4(sp)
+	addi sp, sp, 8
+	
+	add t0, zero, NONE
+	beq t0, v0, moveLeft 	# if yes return
+	addi v0, zero, 1 #failed
+	ret
+moveLeft: 
+	# if no collision update x position in memory
+	ldw t0, T_X(zero)
+	addi t0, t0, -1
+	stw t0, T_X(zero)
+	addi v0, zero, zero #succeeded
+	ret
+
+rotL:
+	add s7, a0, zero 		# store rotation variable
+	rotate_tetromino 		# argument (rotL; rotR)
+	addi a0, zero, 3 		# overlap
+	call collision detection
+
+	ldw ra, 0(sp)
+	stw s0, 4(sp)
+	addi sp, sp, 8
+
+	add t0, zero, NONE
+	
+	#if T_X is larger than 6, call tryMovingleft
+
+	beq t0, v0, rotateLeftOK 		#if success, return
+
+	
+	ldw t0, T_X(zero)				#if fail decide on trying to move left or right depending on location
+	addi t1, zero, 6
+	blt t0, t1, tryMovingRight
+	jmpi tryMovingLeft
+	
+
+rotateLeftOk:
+	ret
+	
+
+tryMovingLeft:
+	call moveL
+	beq v0, zero, tryMovingLeftSuccess
+
+	ldw t0, T_X(zero)
+	addi t0, t0, -1
+	stw t0, T_X(zero)	
+
+	call moveL
+	beq v0, zero, tryMovingLeftSuccess
+
+	#double fail
+	ldw t0, T_X(zero)
+	addi t0, t0, 1
+	stw t0, T_X(zero)
+	
+	addi t7, zero, 2 #rotL
+	beq t7, s7, rotateR
+	jmpi rotL
+
+	
+
+tryMovingLeftSuccess:
+	ret						 #v0 already taken care of
+
+
+	#call moveleft
+	#if moveLeft returns 0, return
+	#else, update T_X to the left and call moveLeft again
+	#if moveLeft returns 0, return, else moveLeft failed again, call rotateback
+
+tryMovingRight:
+	#call moveleft
+	#if moveLeft returns 0, return
+	#else, update T_X to the left and call moveLeft again
+	#if moveLeft returns 0, return, else moveLeft failed again, call rotateback
+
+
+rotateBackRight:
+	addi a0, zero, 0x8
+	rotate_tetromino
+	ret
+
+
+moveR:
+	# check if collision right
+	addi a0, zero, 1
+	call collision_detection
+
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+
+	# if yes return
+	add t0, zero, NONE
+	beq t0, v0, moveRIGHT 	# if yes return
+	ret
+moveRIGHT: 
+	# if no collision update x position in memory
+	ldw t0, T_X(zero)
+	addi t0, t0, 1
+	stw t0, T_X(zero)
+	ret
+
+	
+
+
+;END:act
 
 
 
