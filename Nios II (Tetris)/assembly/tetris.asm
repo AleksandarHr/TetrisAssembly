@@ -1,6 +1,6 @@
 ; BEGIN:main
 main:
-
+	call   get_input
 	ldw t7, DRAW_Ax(zero)
 	addi t6, zero, DRAW_Ax
 	addi sp, zero, 0x2000
@@ -8,6 +8,62 @@ main:
 	call  draw_gsa
 	call  end
 ; END:main
+
+; BEGIN:increment_score
+increment_score:
+	ldw  t0, SCORE(zero)	# load current game score
+	addi t0, t0, 1			# increment current game score by 1
+	stw  t0, SCORE(zero)	# store the updated game score
+; END:increment_score
+
+; BEGIN:get_input
+get_input:
+	ldw  t0, BUTTONS+4(zero)	# load edgecapture word
+	add  t1, zero, zero			# counter for bits 0, 1, 2, 3, 4
+	addi t2, zero, 0x1			# mask for the LSBit
+	
+	and  t3, t0, t2				# take the LSBit (now, bit 0 - moveL)
+	beq  t3, t2, mL
+
+	srli t0, t0, 1			
+	and  t3, t0, t2				# take the LSBit (now, bit 1 -> rotL)
+	beq  t3, t2, rL
+	
+	srli t0, t0, 1			
+	and  t3, t0, t2				# take the LSBit (now, bit 2 -> reset)
+	beq  t3, t2, res
+		
+	srli t0, t0, 1			
+	and  t3, t0, t2				# take the LSBit (now, bit 3 -> rotR)
+	beq  t3, t2, rR
+
+	srli t0, t0, 1			
+	and  t3, t0, t2				# take the LSBit (now, bit 4 -> moveR)
+	beq  t3, t2, mR
+
+	add  v0, zero, zero
+	jmpi return_input
+
+# Save corresponding value to the return register v0
+mL:
+	addi v0, zero, moveL
+	jmpi return_input
+rL:
+	addi v0, zero, rotL
+	jmpi return_input
+res:
+	addi v0, zero, reset
+	jmpi return_input
+rR:
+	addi v0, zero, rotR
+	jmpi return_input
+mR:
+	addi v0, zero, moveR
+
+return_input:
+	stw  zero, BUTTONS+4(zero)	# clear the edgecapture
+	ret
+; END:get_input
 
 ; BEGIN:clear_leds
 clear_leds:
@@ -263,15 +319,15 @@ collision_detection:
 	ldw s3, T_orientation(zero)
 	add s4, a0, zero 	# Collision type
 	add s5, zero, zero 	# offset
-	addi s6, zero, FALLING
+	addi s6, zero, PLACED
 
 
-	beq a0, t0, W_COL
+	beq a0, t0, west_collision
 	addi t0, zero, 1
-	beq a0, t0, E_COL
+	beq a0, t0, east_collision
 	addi t0, zero, 2
-	beq a0, t0, So_COL
-	jmpi OVERLAP
+	beq a0, t0, south_collision
+	jmpi overlapping
 
 	slli s2, s2, 4 #s2 = 16*s2; offset by type * 48
 	add s5, zero, s2
@@ -279,21 +335,21 @@ collision_detection:
 	slli s3, s3, 2
 	add s5, s5, s3
 
-E_COL:
+east_collision:
 	addi s0, s0, 1			# update x-coordinate for movement EAST
 	addi t0, zero, 12		# check if it is within bounds of the screen
 	beq  s0, t0, COLLISION
 	jmpi OVERLAP
-W_COL:
+west_collision:
 	addi s0, s0, -1			# update x-coordinate for movement WEST
 	addi t0, zero, -1		# check if it is within bounds of the screen
 	beq  s0, t0, COLLISION
 	jmpi OVERLAP
-So_COL:
+south_collision:
 	addi s1, s1, 1			# update y-coordinate for movement SOUTH
 	addi t0, zero, 8		# check if it is within bounds of the screen
 	beq  s0, t0, COLLISION
-OVERLAP:
+overlapping:
 
 	#call set_gsa on Anchor
 	add a2, s4, zero #p-value
