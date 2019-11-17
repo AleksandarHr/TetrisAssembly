@@ -241,6 +241,38 @@ end:
 	break
 ; END:end
 
+
+
+;BEGIN:collision_detection
+collision_detection:
+	addi t0, zero, 0
+
+	beq a0, t0, W_COL
+	addi t0, zero, 1
+	beq a0, t0, E_COL
+	addi t0, zero, 2
+	beq a0, t0, So_COL
+	jmpi OVERLAP
+
+
+
+E_COL:
+
+W_COL:
+
+So_COL:
+
+OVERLAP:
+
+
+
+;END:collision_detection
+
+
+
+
+
+
   ;; game state memory location
   .equ T_X, 0x1000                  ; falling tetrominoe position on x
   .equ T_Y, 0x1004                  ; falling tetrominoe position on y
