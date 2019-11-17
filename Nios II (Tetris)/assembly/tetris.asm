@@ -30,7 +30,7 @@ set_pixel:
  	sll   t2,  t2,  t1		# LED mask; shift 1 by position in the word
 	slli   t0,  t0, 2
 	ldw    t3,  0x2000(t0)		# get memory address of LED word
-	or    t3,  t3,  t2		# set pixel
+	or    t3,  t3,  t2			# set pixel
 	stw    t3,  0x2000(t0)		# store back in memory
 	ret
 ; END:set_pixel
@@ -196,7 +196,6 @@ draw_tetromino:
 	ldw ra, 0(sp)
 	addi sp, sp, 4
 
-
 	ret
 
 ;END:draw_tetromino
@@ -247,6 +246,26 @@ end:
 collision_detection:
 	addi t0, zero, 0
 
+	addi sp, sp, -32
+	stw  s0, 0(sp)
+	stw  s1, 4(sp)
+	stw  s2, 8(sp)
+	stw  s3, 12(sp)
+	stw  s4, 16(sp)
+	stw  s5, 20(sp)	
+	stw  s6, 24(sp)
+	stw ra, 28(sp)
+
+
+	ldw s0, T_X(zero)
+	ldw s1, T_Y(zero)
+	ldw s2, T_type(zero)
+	ldw s3, T_orientation(zero)
+	add s4, a0, zero 	# Collision type
+	add s5, zero, zero 	# offset
+	addi s6, zero, FALLING
+
+
 	beq a0, t0, W_COL
 	addi t0, zero, 1
 	beq a0, t0, E_COL
@@ -254,17 +273,101 @@ collision_detection:
 	beq a0, t0, So_COL
 	jmpi OVERLAP
 
+	slli s2, s2, 4 #s2 = 16*s2; offset by type * 48
+	add s5, zero, s2
 
+	slli s3, s3, 2
+	add s5, s5, s3
 
 E_COL:
-
+	addi s0, s0, 1			# update x-coordinate for movement EAST
+	addi t0, zero, 12		# check if it is within bounds of the screen
+	beq  s0, t0, COLLISION
+	jmpi OVERLAP
 W_COL:
-
+	addi s0, s0, -1			# update x-coordinate for movement WEST
+	addi t0, zero, -1		# check if it is within bounds of the screen
+	beq  s0, t0, COLLISION
+	jmpi OVERLAP
 So_COL:
-
+	addi s1, s1, 1			# update y-coordinate for movement SOUTH
+	addi t0, zero, 8		# check if it is within bounds of the screen
+	beq  s0, t0, COLLISION
 OVERLAP:
 
+	#call set_gsa on Anchor
+	add a2, s4, zero #p-value
+	add a0, s0, zero
+	add a1, s1, zero
+	call get_gsa
+	beq v0, s6, COLLISION	# check if anchor point has been moved so that it collides
 
+	#call set_gsa on offset 0
+	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
+	ldw t0, 0(t0) #x first offset
+	ldw t1, 0(t1)
+	
+	add a2, s4, zero #p-value
+	add a0, s0, t0
+	add a1, s1, t1
+	call get_gsa
+	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
+
+	#call set_gsa on offset 1
+	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
+	ldw t0, 4(t0) #x offset
+	ldw t1, 4(t1)
+	
+	add a2, s4, zero #p-value
+	add a0, s0, t0
+	add a1, s1, t1
+	call set_gsa
+	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
+
+	#call set_gsa on offset 2
+	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
+	ldw t0, 8(t0) #x  offset
+	ldw t1, 8(t1)
+
+	add a2, s4, zero #p-value
+	add a0, s0, t0
+	add a1, s1, t1
+	call get_gsa
+	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
+
+NO_COLLISION:
+	# if no collision or overlap was detected, return NONE
+	ldw  s0, 0(sp)
+	ldw  s1, 4(sp)
+	ldw  s2, 8(sp)
+	ldw  s3, 12(sp)
+	ldw  s4, 16(sp)
+	ldw  s5, 20(sp)	
+	ldw  s6, 24(sp)
+	ldw  ra, 28(sp)
+	addi sp, sp, 32
+
+	addi v0, zero, NONE
+	ret
+
+COLLISION:
+	# if collision or an overlap was detected, return type of collision/overlap
+	add v0, zero, s4	# store collision type in return register
+
+	ldw  s0, 0(sp)
+	ldw  s1, 4(sp)
+	ldw  s2, 8(sp)
+	ldw  s3, 12(sp)
+	ldw  s4, 16(sp)
+	ldw  s5, 20(sp)	
+	ldw  s6, 24(sp)
+	ldw  ra, 28(sp)
+	addi sp, sp, 32
+
+	ret
 
 ;END:collision_detection
 
