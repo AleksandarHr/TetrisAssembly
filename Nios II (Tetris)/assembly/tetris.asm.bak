@@ -640,11 +640,11 @@ tryMovingLeft:
 	addi sp, sp, -4
 	stw  ra, 0(sp)
 
-	call moveLProcedure
+	call moveL
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
 						
-	beq v0, zero, movingSuccess		#succeeded
+	beq v0, zero, MovingSuccess		#succeeded
 
 	ldw t0, T_X(zero)
 	addi t0, t0, -1
@@ -653,7 +653,7 @@ tryMovingLeft:
 	addi sp, sp, -4
 	stw  ra, 0(sp)
 
-	call moveLProcedure
+	call moveL
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
 
@@ -672,8 +672,7 @@ tryMovingRight:
 	stw  ra, 0(sp)
 
 	call moveRProcedure
-
-	ldw  ra, 0(sp)
+	stw  ra, 0(sp)
 	addi sp, sp, 4
 
 	beq v0, zero, movingSuccess
@@ -686,7 +685,7 @@ tryMovingRight:
 	stw  ra, 0(sp)
 
 	call moveRProcedure
-	ldw  ra, 0(sp)
+	stw  ra, 0(sp)
 	addi sp, sp, 4
 
 	beq v0, zero, movingSuccess
