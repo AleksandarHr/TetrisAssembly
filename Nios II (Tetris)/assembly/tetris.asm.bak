@@ -329,11 +329,15 @@ collision_detection:
 	beq a0, t0, south_collision
 	jmpi overlapping
 
+<<<<<<< HEAD
 	slli s2, s2, 4 #s2 = 16*s2; offset by type * 48
 	add s5, zero, s2
 
 	slli s3, s3, 2
 	add s5, s5, s3
+=======
+
+>>>>>>> a15cf10b862cf580a09eef62ee0db5c8b2b8aa31
 
 east_collision:
 	addi s0, s0, 1			# update x-coordinate for movement EAST
@@ -351,17 +355,35 @@ south_collision:
 	beq  s0, t0, COLLISION
 overlapping:
 
+<<<<<<< HEAD
 	#call set_gsa on Anchor
 	add a2, s4, zero #p-value
+=======
+	slli s2, s2, 4 			#s2 = 16*s2; offset by type * 16
+	add s5, zero, s2
+
+	slli s3, s3, 2			#s2 = 16*s2; offset by type * 4
+	add s5, s5, s3
+
+	#call get_gsa on Anchor
+	add a2, s4, zero 		#p-value
+>>>>>>> a15cf10b862cf580a09eef62ee0db5c8b2b8aa31
 	add a0, s0, zero
 	add a1, s1, zero
 	call get_gsa
 	beq v0, s6, COLLISION	# check if anchor point has been moved so that it collides
 
+<<<<<<< HEAD
 	#call set_gsa on offset 0
 	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
 	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
 	ldw t0, 0(t0) #x first offset
+=======
+	#call get_gsa on offset 0
+	ldw t0, DRAW_Ax(s5) 	#address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) 	#address of Array of Y-offset
+	ldw t0, 0(t0) 			#x first offset
+>>>>>>> a15cf10b862cf580a09eef62ee0db5c8b2b8aa31
 	ldw t1, 0(t1)
 	
 	add a2, s4, zero #p-value
@@ -370,9 +392,15 @@ overlapping:
 	call get_gsa
 	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
 
+<<<<<<< HEAD
 	#call set_gsa on offset 1
 	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
 	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
+=======
+	#call get_gsa on offset 1
+	ldw t0, DRAW_Ax(s5) 	#address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) 	#address of Array of Y-offset
+>>>>>>> a15cf10b862cf580a09eef62ee0db5c8b2b8aa31
 	ldw t0, 4(t0) #x offset
 	ldw t1, 4(t1)
 	
@@ -382,9 +410,15 @@ overlapping:
 	call set_gsa
 	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
 
+<<<<<<< HEAD
 	#call set_gsa on offset 2
 	ldw t0, DRAW_Ax(s5) #address of Array of X-offset
 	ldw t1, DRAW_Ay(s5) #address of Array of Y-offset
+=======
+	#call get_gsa on offset 2
+	ldw t0, DRAW_Ax(s5)		#address of Array of X-offset
+	ldw t1, DRAW_Ay(s5) 	#address of Array of Y-offset
+>>>>>>> a15cf10b862cf580a09eef62ee0db5c8b2b8aa31
 	ldw t0, 8(t0) #x  offset
 	ldw t1, 8(t1)
 
@@ -411,7 +445,11 @@ NO_COLLISION:
 
 COLLISION:
 	# if collision or an overlap was detected, return type of collision/overlap
+<<<<<<< HEAD
 	add v0, zero, s4	# store collision type in return register
+=======
+	add v0, zero, s4		# store collision type in return register
+>>>>>>> a15cf10b862cf580a09eef62ee0db5c8b2b8aa31
 
 	ldw  s0, 0(sp)
 	ldw  s1, 4(sp)
@@ -429,7 +467,398 @@ COLLISION:
 
 
 
+<<<<<<< HEAD
 
+=======
+;BEGIN:act
+act:
+	addi sp, sp, -8
+	stw s6, 0(sp)
+	stw s7, 4(sp)
+	
+	add s0, a0, zero		#action type
+	addi t0, zero, moveL
+	beq t0, a0, moveLProcedure
+
+	addi t0, zero, rotL
+	beq t0, a0, rotLProcedute
+
+	addi t0, zero, reset
+	beq t0, a0, resetProcedure
+
+	addi t0, zero, rotR
+	beq t0, a0, rotRProcedure
+	
+	addi t0, zero, mmoveR
+	beq t0, a0, moveRProcedure
+	
+	addi t0, zero, moveD	
+	beq t0, a0, moveDProcedure
+
+
+
+;END:act
+
+endOfAction:
+	add v0, s6, zero		#transfer s6 to return value
+							#ra isn't popped, because endOfAction must return to wherever the base procedure was called
+	ldw s6, 0(sp)
+	ldw s7, 4(sp)
+	addi sp, sp, 8
+	ret
+
+movingSuccess:
+	add s6, zero, zero
+	jmpi endOfAction					 #v0 already taken care of
+
+moveLProcedure:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+										# check if collision left
+	add a0, zero, zero
+	call collision_detection
+
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+	
+	add t0, zero, NONE
+	beq t0, v0, moveLeft 				# if no collision do the effective move	
+	addi s6, zero, 1 #failed			# if collision return
+	jmpi endOfAction
+
+moveRProcedure:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	# check if collision right
+	addi a0, zero, 1
+	call collision_detection
+
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+
+	# if yes return
+	add t0, zero, NONE
+	beq t0, v0, moveRight				# if yes return
+	addi s6, zero, 1 					#fail
+	jmpi endOfAction
+	
+moveDProcedure:
+	# check if collision down
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	addi a0, zero, 2 			
+	call collision_detection
+
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+
+	# if yes return
+	add t0, zero, NONE
+	beq t0, v0, moveDown 			# if yes return
+	addi s6, zero, 1 				#fail
+	jmpi endOfAction
+
+moveLeft: 
+	# if no collision update x position in memory
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+	
+	ldw t0, T_X(zero)
+	addi t0, t0, -1
+	stw t0, T_X(zero)
+	call draw_tetromino
+
+	ldw  ra, 0(sp)	
+	addi sp, sp, 4	
+	jmpi movingSuccess
+
+moveRight: 
+	# if no collision update x position in memory
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+	
+	ldw t0, T_X(zero)
+	addi t0, t0, 1
+	stw t0, T_X(zero)
+	call draw_tetromino
+
+	ldw  ra, 0(sp)	
+	addi sp, sp, 4	
+	jmpi movingSuccess
+
+moveDown: 
+	# if no collision update y position in memory
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	ldw t0, T_Y(zero)
+	addi t0, t0, 1
+	stw t0, T_Y(zero)
+	call draw_tetromino
+
+	ldw  ra, 0(sp)	
+	addi sp, sp, 4	
+
+	jmpi movingSuccess
+
+rotLProcedure:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	add s7, a0, zero 				# store rotation variable
+	call rotate_tetromino 			# argument (rotL; rotR)
+	addi a0, zero, 3 				# overlap
+	call collision_detection
+
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+
+	add t0, zero, NONE	
+	beq t0, v0, rotateLeftOK 		#if success, return
+									#if T_X is larger than 6, call tryMovingleft
+	ldw t0, T_X(zero)				#if fail decide on trying to move left or right depending on location
+	addi t1, zero, 6
+	blt t0, t1, tryMovingRight
+	jmpi tryMovingLeft
+
+rotRProcedure: 
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	add s7, a0, zero 				# store rotation variable
+	call rotate_tetromino 			# argument (rotL; rotR)
+	addi a0, zero, 3 				# overlap
+	call collision detection
+
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+
+	add t0, zero, NONE
+	beq t0, v0, rotateRightOK 		#if success, return
+									#if T_X is larger than 6, call tryMovingleft
+	ldw t0, T_X(zero)				#if fail decide on trying to move left or right depending on location
+	addi t1, zero, 6
+	blt t0, t1, tryMovingRight
+	jmpi tryMovingLeft
+
+
+rotateLeftOk:	
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	addi v0, zero, 0				#success
+	add a0, s7, zero
+	call draw_tetromino
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+	jmpi endOfAction
+	
+rotateRightOk:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	addi s6, zero, 0				#success
+	add a0, s7, zero
+	call draw_tetromino
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+	jmpi endOfAction
+
+tryMovingLeft:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	addi a0, zero, 1
+	call act						#moveL
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+						
+	beq v0, zero, movingSuccess		#succeeded
+
+	ldw t0, T_X(zero)
+	addi t0, t0, -1
+	stw t0, T_X(zero)	
+
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	addi a0, zero, 1
+	call act						#moveL
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+
+	beq v0, zero, movingSuccess
+	#double fail
+	ldw t0, T_X(zero)
+	addi t0, t0, 1
+	stw t0, T_X(zero)
+	
+	addi t7, zero, 2 #rotL
+	beq t7, s7, rotateBackRight
+	jmpi rotateBackLeft
+
+tryMovingRight:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	addi a0, zero, 0x10
+	call act						#moveR
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+
+	beq v0, zero, movingSuccess
+
+	ldw t0, T_X(zero)
+	addi t0, t0, 1
+	stw t0, T_X(zero)	
+
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	addi a0, zero, 0x10
+	call act						#moveR
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+
+	beq v0, zero, movingSuccess
+
+	#double fail
+	ldw t0, T_X(zero)
+	addi t0, t0, -1
+	stw t0, T_X(zero)
+	
+	addi t7, zero, 2 #rotL
+	beq t7, s7, rotateBackRight
+	jmpi rotateBackLeft
+
+
+rotateBackRight:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+	addi a0, zero, 8 	 
+	call rotate_tetromino
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+	addi s6, zero, 1 				#fail
+	jmpi endOfAction
+	
+
+rotateBackLeft:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+	addi a0, zero, 2 	 
+	call rotate_tetromino
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+	addi s6, zero, 1 				#fail
+	jmpi endOfAction
+
+
+rotate_tetromino:
+	addi t0, zero, rotL
+	beq a0, t0, rotate_tetromino_left 
+
+	ldw t0, T_Orientation(zero) 	#rotate to the right
+	addi t0, t0, 1
+	andi t0, t0, 3
+	stw t0, T_Orientation(zero)
+	ret
+
+rotate_tetromino_left:
+	ldw t0, T_Orientation(zero) 	#rotate to the left
+	addi t0, t0, -1
+	andi t0, t0, 3
+	stw t0, T_Orientation(zero)
+	ret
+
+resetProcedure:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	call reset_game
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+
+	ldw s6, 0(sp)
+	ldw s7, 4(sp)
+	addi sp, sp, 8
+	ret
+
+;BEGIN:reset_game
+reset_game:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	# clear score
+	stw zero, SCORE(zero)
+
+	# clear the GSA
+	stw zero, GSA(zero)
+	stw zero, GSA+4(zero)
+	stw zero, GSA+8(zero)
+
+	# clear LEDS
+	stw zero, LEDS(zero)
+	stw zero, LEDS+4(zero)
+	stw zero, LEDS+8(zero)
+
+	# clear SEVEN_SEGS
+	stw zero, SEVEN_SEGS(zero)
+	stw zero, SEVEN_SEGS+4(zero)
+	stw zero, SEVEN_SEGS+8(zero)
+	stw zero, SEVEN_SEGS+12(zero)
+
+	# generate and draw a random tetromino
+	call generate_tetromino
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+	ret
+; END:reset_game
+
+
+; BEGIN:detect_full_line
+detect_full_line:
+	addi v0, zero, 8	# default return value for v0 - y=8, smallest y-coordinate that is too high fit on the screen
+	addi t0, zero, 1
+	addi a0, zero, -1	# x-iterator
+	addi a1, zero, -1	# y-iterator
+	addi sp, sp, -12
+
+y_loop:
+	addi a1, a1, 1
+	beq  a1, v0, return_detect_full_line
+
+x_loop:
+	addi a0, a0, 1
+
+	stw  a0, 0(sp)
+	stw  a1, 4(sp)
+	stw  v0, 8(sp)
+
+	call get_gsa
+
+	ldw  a0, 0(sp)
+	ldw  a1, 4(sp)
+	ldw  v0, 8(sp)
+
+	add  t0, zero, 11
+	blt  a0, t0, x_loop
+	addi a0, zero, -1
+	jmpi y_loop
+
+return_detect_full_line:
+	addi sp, sp, 12
+	ret
+; END:detect_full_line
+>>>>>>> a15cf10b862cf580a09eef62ee0db5c8b2b8aa31
 
 
   ;; game state memory location
@@ -576,7 +1005,14 @@ B_W_X:
 B_W_Y:
   .word 0xFFFFFFFE
   .word 0xFFFFFFFF
+<<<<<<< HEAD
   .word 0x01
+=======
+  .word 0x01	#call moveleft
+	#if moveLeft returns 0, return
+	#else, update T_X to the left and call moveLeft again
+	#if moveLeft returns 0, return, else moveLeft failed again, call rotateback
+>>>>>>> a15cf10b862cf580a09eef62ee0db5c8b2b8aa31
 
 T_N_X:
   .word 0xFFFFFFFF
