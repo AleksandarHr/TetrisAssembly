@@ -433,29 +433,28 @@ COLLISION:
 
 ;BEGIN:act
 act:
-	addi sp, sp, -12
-	stw ra, 0(sp)
-	stw s0, 4(sp)
-	stw s6, 8(sp)
+	addi sp, sp, -8
+	stw s6, 0(sp)
+	stw s7, 4(sp)
 	
 	add s0, a0, zero		#action type
 	addi t0, zero, moveL
-	beq t0, s0, moveLProcedure
+	beq t0, a0, moveLProcedure
 
 	addi t0, zero, rotL
-	beq t0, s0, rotLProcedute
+	beq t0, a0, rotLProcedute
 
 	addi t0, zero, reset
-	beq t0, s0, resetProcedure
+	beq t0, a0, resetProcedure
 
 	addi t0, zero, rotR
-	beq t0, s0, rotRProcedure
+	beq t0, a0, rotRProcedure
 	
 	addi t0, zero, mmoveR
-	beq t0, s0, moveRProcedure
+	beq t0, a0, moveRProcedure
 	
 	addi t0, zero, moveD	
-	beq t0, s0, moveDProcedure
+	beq t0, a0, moveDProcedure
 
 
 
@@ -464,9 +463,9 @@ act:
 endOfAction:
 	add v0, s6, zero		#transfer s6 to return value
 							#ra isn't popped, because endOfAction must return to wherever the base procedure was called
-	ldw s0, 4(sp)
-	ldw s6, 8(sp)
-	addi sp, sp, 12	
+	ldw s6, 0(sp)
+	ldw s7, 4(sp)
+	addi sp, sp, 8
 	ret
 
 movingSuccess:
@@ -475,9 +474,8 @@ movingSuccess:
 
 moveLProcedure:
 	addi sp, sp, -4
-	stw ra, 0(sp)
-	
-	# check if collision left
+	stw  ra, 0(sp)
+										# check if collision left
 	add a0, zero, zero
 	call collision_detection
 
@@ -485,8 +483,8 @@ moveLProcedure:
 	addi sp, sp, 4
 	
 	add t0, zero, NONE
-	beq t0, v0, moveLeft 			# if no collision do the effective move	
-	addi s6, zero, 1 #failed		# if collision return
+	beq t0, v0, moveLeft 				# if no collision do the effective move	
+	addi s6, zero, 1 #failed			# if collision return
 	jmpi endOfAction
 
 moveRProcedure:
@@ -502,8 +500,8 @@ moveRProcedure:
 
 	# if yes return
 	add t0, zero, NONE
-	beq t0, v0, moveRight			# if yes return
-	addi s6, zero, 1 				#fail
+	beq t0, v0, moveRight				# if yes return
+	addi s6, zero, 1 					#fail
 	jmpi endOfAction
 	
 moveDProcedure:
@@ -567,9 +565,8 @@ moveDown:
 	jmpi movingSuccess
 
 rotLProcedure:
-	addi sp, sp, -8
-	stw ra, 0(sp)
-	stw s7, 4(sp)
+	addi sp, sp, -4
+	stw  ra, 0(sp)
 
 	add s7, a0, zero 				# store rotation variable
 	call rotate_tetromino 			# argument (rotL; rotR)
@@ -577,8 +574,7 @@ rotLProcedure:
 	call collision_detection
 
 	ldw ra, 0(sp)
-	stw s7, 4(sp)
-	addi sp, sp, 8
+	addi sp, sp, 4
 
 	add t0, zero, NONE	
 	beq t0, v0, rotateLeftOK 		#if success, return
@@ -589,19 +585,16 @@ rotLProcedure:
 	jmpi tryMovingLeft
 
 rotRProcedure: 
-	addi sp, sp, -8
-	stw ra, 0(sp)
-	stw s7, 4(sp)
+	addi sp, sp, -4
+	stw  ra, 0(sp)
 
 	add s7, a0, zero 				# store rotation variable
 	call rotate_tetromino 			# argument (rotL; rotR)
 	addi a0, zero, 3 				# overlap
 	call collision detection
 
-	#TODO
 	ldw ra, 0(sp)
-	stw s0, 4(sp)
-	addi sp, sp, 8
+	addi sp, sp, 4
 
 	add t0, zero, NONE
 	beq t0, v0, rotateRightOK 		#if success, return
@@ -640,7 +633,8 @@ tryMovingLeft:
 	addi sp, sp, -4
 	stw  ra, 0(sp)
 
-	call moveLProcedure
+	addi a0, zero, 1
+	call act						#moveL
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
 						
@@ -653,7 +647,8 @@ tryMovingLeft:
 	addi sp, sp, -4
 	stw  ra, 0(sp)
 
-	call moveLProcedure
+	addi a0, zero, 1
+	call act						#moveL
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
 
@@ -671,7 +666,8 @@ tryMovingRight:
 	addi sp, sp, -4
 	stw  ra, 0(sp)
 
-	call moveRProcedure
+	addi a0, zero, 0x10
+	call act						#moveR
 
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
@@ -685,7 +681,8 @@ tryMovingRight:
 	addi sp, sp, -4
 	stw  ra, 0(sp)
 
-	call moveRProcedure
+	addi a0, zero, 0x10
+	call act						#moveR
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
 
@@ -702,15 +699,24 @@ tryMovingRight:
 
 
 rotateBackRight:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
 	addi a0, zero, 8 	 
 	call rotate_tetromino
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
 	addi s6, zero, 1 				#fail
 	jmpi endOfAction
 	
 
 rotateBackLeft:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
 	addi a0, zero, 2 	 
 	call rotate_tetromino
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
 	addi s6, zero, 1 				#fail
 	jmpi endOfAction
 
@@ -733,9 +739,86 @@ rotate_tetromino_left:
 	ret
 
 resetProcedure:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
 	call reset_game
 
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
 
+	ldw s6, 0(sp)
+	ldw s7, 4(sp)
+	addi sp, sp, 8
+	ret
+
+;BEGIN:reset_game
+reset_game:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	# clear score
+	stw zero, SCORE(zero)
+
+	# clear the GSA
+	stw zero, GSA(zero)
+	stw zero, GSA+4(zero)
+	stw zero, GSA+8(zero)
+
+	# clear LEDS
+	stw zero, LEDS(zero)
+	stw zero, LEDS+4(zero)
+	stw zero, LEDS+8(zero)
+
+	# clear SEVEN_SEGS
+	stw zero, SEVEN_SEGS(zero)
+	stw zero, SEVEN_SEGS+4(zero)
+	stw zero, SEVEN_SEGS+8(zero)
+	stw zero, SEVEN_SEGS+12(zero)
+
+	# generate and draw a random tetromino
+	call generate_tetromino
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+	ret
+; END:reset_game
+
+
+; BEGIN:detect_full_line
+detect_full_line:
+	addi v0, zero, 8	# default return value for v0 - y=8, smallest y-coordinate that is too high fit on the screen
+	addi t0, zero, 1
+	addi a0, zero, -1	# x-iterator
+	addi a1, zero, -1	# y-iterator
+	addi sp, sp, -12
+
+y_loop:
+	addi a1, a1, 1
+	beq  a1, v0, return_detect_full_line
+
+x_loop:
+	addi a0, a0, 1
+
+	stw  a0, 0(sp)
+	stw  a1, 4(sp)
+	stw  v0, 8(sp)
+
+	call get_gsa
+
+	ldw  a0, 0(sp)
+	ldw  a1, 4(sp)
+	ldw  v0, 8(sp)
+
+	add  t0, zero, 11
+	blt  a0, t0, x_loop
+	addi a0, zero, -1
+	jmpi y_loop
+
+return_detect_full_line:
+	addi sp, sp, 12
+	ret
+; END:detect_full_line
 
 
   ;; game state memory location
