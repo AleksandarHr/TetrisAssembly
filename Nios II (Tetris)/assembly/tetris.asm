@@ -7,16 +7,17 @@ move_down_loop:
 add  s0, zero, zero
 
 rate_loop:
+	call clear_leds
 	call draw_gsa					# draw gsa
 												# TODO: display score
 	add a0, zero, zero
 	call draw_tetromino		# Remove falling tetromino from the screen
 
-#	call wait							# wait approx 0.2s
+	call wait							# wait approx 0.2s
 
 	call get_input				# get button input
 
-	add  a0, v0, zero			# get corresponding action
+	add  a0, zero, v0			# get corresponding action
 	call act							# try to execute user input action
 
 	addi  a0, zero, 0x02
@@ -347,8 +348,6 @@ set_gsa:
 
 ; BEGIN:draw_gsa
 draw_gsa:
-#	call clear_leds
-
 	addi sp, sp, -12
 	stw   s0, 0(sp)
 	stw   s1, 4(sp)
@@ -386,7 +385,7 @@ finish:
 	ret
 ; END:draw_gsa
 
-; BEGIN:draw_tetromino
+; BEGIN:2
 draw_tetromino:
 	addi sp, sp, -28
 	stw s0, 0(sp)
@@ -538,16 +537,16 @@ east_collision:
 	addi s0, s0, 1			# update x-coordinate for movement EAST
 	addi t0, zero, 12		# check if it is within bounds of the screen
 	beq  s0, t0, COLLISION
-	jmpi OVERLAP
+	jmpi overlapping
 west_collision:
 	addi s0, s0, -1			# update x-coordinate for movement WEST
 	addi t0, zero, -1		# check if it is within bounds of the screen
 	beq  s0, t0, COLLISION
-	jmpi OVERLAP
+	jmpi overlapping	
 south_collision:
 	addi s1, s1, 1			# update y-coordinate for movement SOUTH
 	addi t0, zero, 8		# check if it is within bounds of the screen
-	beq  s0, t0, COLLISION
+	beq  s1, t0, COLLISION
 overlapping:
 
 	slli s2, s2, 4 			#s2 = 16*s2; offset by type * 16
