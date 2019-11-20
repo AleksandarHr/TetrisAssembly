@@ -4,7 +4,6 @@ main:
 
 move_down_loop:
 add  s0, zero, zero
-
 rate_loop:
 	call clear_leds
 	call draw_gsa					# draw gsa
@@ -80,7 +79,8 @@ reset_game:
 
 	# clear score
 	stw zero, SCORE(zero)
-
+	call display_score
+	
 	# clear LEDS
 	call clear_leds
 	add t1, zero, zero
@@ -88,7 +88,7 @@ reset_game:
 clear_gsa_loop:
 	addi t0, zero, 96
 	slli t0, t0, 2
-	
+
 	# clear the GSA
 	stw zero, GSA(t1)
 	addi t1, t1, 4
@@ -174,7 +174,7 @@ disable_x_loop:
 
 	call set_gsa
 	bne s0, zero, disable_x_loop
-	
+
 	call clear_leds
 	call draw_gsa
 	call wait
@@ -215,7 +215,7 @@ remove_x_loop:
 	jmpi remove_x_loop
 
 remove_line_finished:
-										#remove top-most line
+	#remove top-most line
 	addi s0, zero, 11
 	addi s5, zero, 0
 loopi:
@@ -226,6 +226,9 @@ loopi:
 	addi s0, s0, -1
 	addi t0, zero, -1
 	blt t0, s0, loopi
+
+	call increment_score
+	call display_score
 
 	ldw  s0, 0(sp)
 	ldw  s1, 4(sp)
@@ -241,6 +244,45 @@ increment_score:
 	addi t0, t0, 1			# increment current game score by 1
 	stw  t0, SCORE(zero)	# store the updated game score
 ; END:increment_score
+
+; BEGIN:display_score
+display_score:
+	ldw  t0, SCORE(zero)	# load current game score
+	addi s0, zero, 100
+	addi s1, zero, 10
+	add  t0, t0, s0
+	addi s2, zero, -1 	# counter for hundreds digit
+	addi s3, zero, -1		# counter for tens digit
+
+hundreds_loop:
+	addi s2, s2, 1
+	addi t0, t0, -100
+	blt  s0, t0, hundreds_loop
+
+	# here we have the hundreds digit in s0
+	slli s0, s0, 4
+	ldw  s0, font_data(s0)
+
+	add t0, t0, s1
+tens_loop:
+	addi s3, s3, 1
+	addi t0, t0, -10
+	blt  s1, t0, tens_loop
+
+	# here we have the tens digit in s1
+	slli s1, s1, 4
+	ldw  s1, font_data(s1)
+
+	# here we have the singles digit in t0
+	slli t0, t0, 4
+	ldw  t0, font_data(t0)
+
+	stw  zero, SEVEN_SEGS(zero)
+	stw  s0, SEVEN_SEGS+4(zero)
+	stw  s1, SEVEN_SEGS+8(zero)
+	stw  t0, SEVEN_SEGS+12(zero)
+; END:display_score
+
 
 ; BEGIN:get_input
 get_input:
@@ -364,7 +406,7 @@ set_gsa:
 	add t1, zero, a1	# y-coord
 	slli t0, t0, 3		# get 8*x
 	add t4, t0, t1		# get 8*x + y - index in GSA
-	slli t4, t4, 2		
+	slli t4, t4, 2
 	stw a2, GSA(t4)
 	ret
 ; END:get_gsa
