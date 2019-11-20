@@ -101,11 +101,13 @@ clear_gsa_loop:
 	bne	t1, t0, clear_gsa_loop
 
 	# clear SEVEN_SEGS
-	stw zero, SEVEN_SEGS(zero)
-	stw zero, SEVEN_SEGS+4(zero)
-	stw zero, SEVEN_SEGS+8(zero)
-	stw zero, SEVEN_SEGS+12(zero)
-
+	ldw t0, font_data(zero)
+	stw t0, SEVEN_SEGS(zero)
+	stw t0, SEVEN_SEGS+4(zero)
+	stw t0, SEVEN_SEGS+8(zero)
+	stw t0, SEVEN_SEGS+12(zero)
+	
+	call display_score
 	# generate and draw a random tetromino
 	call generate_tetromino
 
@@ -308,6 +310,7 @@ tens_loop:
 	stw  s3, SEVEN_SEGS+8(zero)
 	stw  t0, SEVEN_SEGS+12(zero)
 
+end_display_score:
 	ldw  s0, 0(sp)
 	ldw  s1, 4(sp)
 	ldw  s2, 8(sp)
