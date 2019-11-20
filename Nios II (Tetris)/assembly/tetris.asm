@@ -1,3 +1,4 @@
+; BEGIN:main
 main:
 	addi sp, zero, 0x2000
 	call reset_game
@@ -110,7 +111,6 @@ clear_gsa_loop:
 
 
 ; BEGIN:detect_full_line
-
 detect_full_line:
 	addi sp, sp, -16
 	stw  s6, 0(sp)
@@ -156,7 +156,7 @@ return_detect_full_line:
 	ret
 ; END:detect_full_line
 
-; BEGIN:remove_full_line:
+; BEGIN:remove_full_line
 remove_full_line:
 	addi sp, sp, -12
 	stw  s0, 0(sp)
@@ -235,7 +235,7 @@ loopi:
 	ldw  ra, 8(sp)
 	addi sp, sp, 12
 	ret
-; END:remove_full_line:
+; END:remove_full_line
 
 
 ; BEGIN:increment_score
@@ -243,6 +243,7 @@ increment_score:
 	ldw  t0, SCORE(zero)	# load current game score
 	addi t0, t0, 1			# increment current game score by 1
 	stw  t0, SCORE(zero)	# store the updated game score
+	ret
 ; END:increment_score
 
 ; BEGIN:display_score
@@ -281,6 +282,7 @@ tens_loop:
 	stw  s0, SEVEN_SEGS+4(zero)
 	stw  s1, SEVEN_SEGS+8(zero)
 	stw  t0, SEVEN_SEGS+12(zero)
+	ret
 ; END:display_score
 
 
@@ -342,7 +344,7 @@ clear_leds:
 	addi t0, t0, 4
 	stw zero,  0x2000(t0)
 	ret
-; END: clear_leds
+; END:clear_leds
 
 ; BEGIN:set_pixel
 set_pixel:
@@ -383,11 +385,11 @@ in_gsa:
 	ret
 ; END:in_gsa
 
-; BEGIN:out
+; BEGIN:helper
 out:
 	addi v0, zero, 1
 	ret
-; END:out
+; END:helper
 
 ; BEGIN:get_gsa
 get_gsa:
@@ -409,7 +411,7 @@ set_gsa:
 	slli t4, t4, 2
 	stw a2, GSA(t4)
 	ret
-; END:get_gsa
+; END:set_gsa
 
 
 ; BEGIN:draw_gsa
@@ -421,7 +423,6 @@ draw_gsa:
 
 	addi s0, zero, 12	# x-counter 0,1,2,...,11
 	addi s1, zero, 8	# y-counter 0,1,2,...,7
-
 
 outer:
 	beq  s0, zero, finish
@@ -451,7 +452,7 @@ finish:
 	ret
 ; END:draw_gsa
 
-; BEGIN:2
+; BEGIN:draw_tetromino
 draw_tetromino:
 	addi sp, sp, -28
 	stw s0, 0(sp)
@@ -534,38 +535,34 @@ draw_tetromino:
 
 
 ;BEGIN:generate_tetromino
-
 generate_tetromino:
-addi t1, zero, 4
+	addi t1, zero, 4
 
-;BEGIN:regenerate
 regenerate:
-add  t0, zero, zero
-stw  t0, RANDOM_NUM(zero)
-ldw  t0, RANDOM_NUM(zero)
-slli t0, t0, 28
-srli t0, t0, 28
-blt  t1, t0, regenerate
-;END:regenerate
+	add  t0, zero, zero
+	stw  t0, RANDOM_NUM(zero)
+	ldw  t0, RANDOM_NUM(zero)
+	slli t0, t0, 28
+	srli t0, t0, 28
+	blt  t1, t0, regenerate
 
 ;; initialize (6,1) for x,y coords, T_orientation and T_type
-stw  t0, T_type(zero)
-addi t0, zero, 6
-addi t1, zero, 1
-stw  t0, T_X(zero)
-stw  t1, T_Y(zero)
-stw  zero, T_orientation(zero)
-add  a0, zero, FALLING ;; FALLING
+	stw  t0, T_type(zero)
+	addi t0, zero, 6
+	addi t1, zero, 1
+	stw  t0, T_X(zero)
+	stw  t1, T_Y(zero)
+	stw  zero, T_orientation(zero)
+	add  a0, zero, FALLING ;; FALLING
 
-addi sp, sp, -4
-stw  ra, 0(sp)
+	addi sp, sp, -4
+	stw  ra, 0(sp)
 
-call draw_tetromino
+	call draw_tetromino
 
-ldw  ra, 0(sp)
-addi sp, sp, 4
-ret
-
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+	ret
 ;END:generate_tetromino
 
 ;BEGIN:detect_collision
@@ -707,7 +704,7 @@ NO_COLLISION:
 	addi sp, sp, 32
 
 	addi v0, zero, NONE
-	ret
+	jmpi return_collision
 
 COLLISION:
 	# if collision or an overlap was detected, return type of collision/overlap
@@ -723,10 +720,9 @@ COLLISION:
 	ldw  ra, 28(sp)
 	addi sp, sp, 32
 
+return_collision:
 	ret
-
 ;END:detect_collision
-
 
 
 ;BEGIN:act
@@ -754,20 +750,24 @@ act:
 
 	addi t0, zero, moveD
 	beq t0, a0, moveDProcedure
-;END:act
-
-endOfAction:
-	add v0, s6, zero		#transfer s6 to return value
-							#ra isn't popped, because endOfAction must return to wherever the base procedure was called
-	ldw s6, 0(sp)
-	ldw s7, 4(sp)
-	ldw s0, 8(sp)
-	addi sp, sp, 12
-	ret
 
 movingSuccess:
 	add s6, zero, zero
 	jmpi endOfAction					 #v0 already taken care of
+
+resetProcedure:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	call reset_game
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+
+	ldw s6, 0(sp)
+	ldw s7, 4(sp)
+	addi sp, sp, 8
+	jmpi endOfAction
 
 moveLProcedure:
 	addi sp, sp, -4
@@ -1017,7 +1017,17 @@ rotateBackLeft:
 	addi s6, zero, 1 				#fail
 	jmpi endOfAction
 
+endOfAction:
+	add v0, s6, zero		#transfer s6 to return value
+							#ra isnt popped, because endOfAction must return to wherever the base procedure was called
+	ldw s6, 0(sp)
+	ldw s7, 4(sp)
+	ldw s0, 8(sp)
+	addi sp, sp, 12
+	ret
+; END:act
 
+; BEGIN:rotate_tetromino
 rotate_tetromino:
 	addi t0, zero, rotL
 	beq a0, t0, rotate_tetromino_left
@@ -1026,28 +1036,17 @@ rotate_tetromino:
 	addi t0, t0, 1
 	andi t0, t0, 3
 	stw t0, T_orientation(zero)
-	ret
+	jmpi end_rotation
 
 rotate_tetromino_left:
 	ldw t0, T_orientation(zero) 	#rotate to the left
 	addi t0, t0, -1
 	andi t0, t0, 3
 	stw t0, T_orientation(zero)
+
+end_rotation:
 	ret
-
-resetProcedure:
-	addi sp, sp, -4
-	stw  ra, 0(sp)
-
-	call reset_game
-
-	ldw  ra, 0(sp)
-	addi sp, sp, 4
-
-	ldw s6, 0(sp)
-	ldw s7, 4(sp)
-	addi sp, sp, 8
-	ret
+; END:rotate_tetromino
 
   ;; game state memory location
   .equ T_X, 0x1000                  ; falling tetrominoe position on x
