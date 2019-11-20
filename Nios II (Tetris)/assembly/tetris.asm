@@ -201,6 +201,37 @@ enable_x_loop:
 	call draw_gsa
 	call wait
 
+# BLINK AGAIN
+	addi s0, zero, 12
+
+# MAKE LINE BLINK - OFF_2
+disable_x_loop_two:
+	addi s0, s0, -1
+	add  a0, zero, s0
+	add  a1, zero, s1
+	add  a2, zero, zero
+
+	call set_gsa
+	bne s0, zero, disable_x_loop_two
+
+	call clear_leds
+	call draw_gsa
+	call wait
+	addi s0, zero, 12
+
+# MAKE LINE BLINK - ON_2
+enable_x_loop_two:
+	addi s0, s0, -1
+	add  a0, zero, s0
+	add  a1, zero, s1
+	addi a2, zero, 1
+
+	call set_gsa
+	bne s0, zero, enable_x_loop_two
+
+	call clear_leds
+	call draw_gsa
+	call wait
 
 # REMOVE line and shift lines
 remove_y_loop:
