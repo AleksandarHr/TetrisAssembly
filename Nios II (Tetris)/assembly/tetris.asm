@@ -20,7 +20,7 @@ rate_loop:
 	#addi  a0, zero, moveL
 	call act							# try to execute user input action
 
-	add  a0, zero, FALLING
+	addi  a0, zero, FALLING
 	call draw_tetromino		# draw falling tetromino
 
 	addi s0, s0, 1
@@ -30,16 +30,16 @@ rate_loop:
 	add  a0, zero, zero
 	call draw_tetromino		# Remove falling tetromino from the screen
 
-	add a0, zero, moveD
+	addi a0, zero, moveD
 	call act						# move tetromino downwards
 	add  s1, v0, zero		# store the act result
 
-	add a0, zero, FALLING
+	addi a0, zero, FALLING
 	call draw_tetromino		# draw falling tetromino
 
 	beq  s1, zero, move_down_loop	# if we havent reached the bottom, loop
 
-	add a0, zero, PLACED
+	addi a0, zero, PLACED
 	call draw_tetromino		# draw placed tetromino
 
 full_line_removal_loop:
@@ -49,6 +49,11 @@ full_line_removal_loop:
 
 	add  a0, zero, v0
 	call remove_full_line					# remove full ine
+
+	# increment and display score
+	call increment_score
+	call display_score
+
 	call clear_leds
 	call draw_gsa
 	jmpi full_line_removal_loop		# loop, until no more full ines
@@ -165,7 +170,7 @@ remove_full_line:
 	add  s1, zero, a0		# y-coordinate of line to be removed
 	addi s0, zero, 12
 
-# MAKE LINE BLINK
+# MAKE LINE BLINK - OFF_1
 disable_x_loop:
 	addi s0, s0, -1
 	add  a0, zero, s0
@@ -180,6 +185,7 @@ disable_x_loop:
 	call wait
 	addi s0, zero, 12
 
+# MAKE LINE BLINK - ON_1
 enable_x_loop:
 	addi s0, s0, -1
 	add  a0, zero, s0
@@ -227,9 +233,6 @@ loopi:
 	addi t0, zero, -1
 	blt t0, s0, loopi
 
-	call increment_score
-	call display_score
-
 	ldw  s0, 0(sp)
 	ldw  s1, 4(sp)
 	ldw  ra, 8(sp)
@@ -248,40 +251,71 @@ increment_score:
 
 ; BEGIN:display_score
 display_score:
+	addi sp, sp, -24
+	stw  s0, 0(sp)
+	stw  s1, 4(sp)
+	stw  s2, 8(sp)
+	stw  s3, 12(sp)
+	stw  s4, 16(sp)
+	stw  s5, 20(sp)
+
 	ldw  t0, SCORE(zero)	# load current game score
+	addi s5, zero, 1000
 	addi s0, zero, 100
 	addi s1, zero, 10
 	add  t0, t0, s0
 	addi s2, zero, -1 	# counter for hundreds digit
 	addi s3, zero, -1		# counter for tens digit
+	addi s4, zero, -1	# counter for thousands digit
 
+	add  t0, t0, s5
+thousands_loop:
+	addi s4, s4, 1
+	addi t0, t0, -1000
+	bge  t0, s5, thousands_loop
+
+	# here we have the thousands digit in s4
+	slli s4, s4, 2
+	ldw  s4, font_data(s4)
+
+	add  t0, t0, s0
 hundreds_loop:
 	addi s2, s2, 1
 	addi t0, t0, -100
-	blt  s0, t0, hundreds_loop
+	bge  t0, s0, hundreds_loop
 
-	# here we have the hundreds digit in s0
-	slli s0, s0, 4
-	ldw  s0, font_data(s0)
+	# here we have the hundreds digit in s2
+	slli s2, s2, 2
+	addi s2, s2, -1
+	ldw  s2, font_data(s2)
 
 	add t0, t0, s1
 tens_loop:
 	addi s3, s3, 1
 	addi t0, t0, -10
-	blt  s1, t0, tens_loop
+	bge  t0, s1, tens_loop
 
-	# here we have the tens digit in s1
-	slli s1, s1, 4
-	ldw  s1, font_data(s1)
+	# here we have the tens digit in s3
+	slli s3, s3, 2
+	ldw  s3, font_data(s3)
 
 	# here we have the singles digit in t0
-	slli t0, t0, 4
+	slli t0, t0, 2
 	ldw  t0, font_data(t0)
 
-	stw  zero, SEVEN_SEGS(zero)
-	stw  s0, SEVEN_SEGS+4(zero)
-	stw  s1, SEVEN_SEGS+8(zero)
+	stw  s4, SEVEN_SEGS(zero)
+	stw  s2, SEVEN_SEGS+4(zero)
+	stw  s3, SEVEN_SEGS+8(zero)
 	stw  t0, SEVEN_SEGS+12(zero)
+
+	ldw  s0, 0(sp)
+	ldw  s1, 4(sp)
+	ldw  s2, 8(sp)
+	ldw  s3, 12(sp)
+	ldw  s4, 16(sp)
+	ldw  s5, 20(sp)
+	addi sp, sp, 24
+
 	ret
 ; END:display_score
 
@@ -553,7 +587,7 @@ regenerate:
 	stw  t0, T_X(zero)
 	stw  t1, T_Y(zero)
 	stw  zero, T_orientation(zero)
-	add  a0, zero, FALLING ;; FALLING
+	addi  a0, zero, FALLING ;; FALLING
 
 	addi sp, sp, -4
 	stw  ra, 0(sp)
