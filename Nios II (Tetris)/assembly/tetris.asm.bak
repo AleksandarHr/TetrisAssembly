@@ -1,69 +1,29 @@
 ; BEGIN:main
 main:
 	addi sp, zero, 0x2000
-	call reset_game
 
-move_down_loop:
-add  s0, zero, zero
 
-rate_loop:
+						
+	addi a1, zero, 0		#random pixel
+	addi a0, zero, 6
+	addi a2, zero, 0
+	call set_gsa
+	
+	
+
+
+	call draw_gsa
+	call detect_full_line
+	add a0, v0, zero
+	call remove_full_line
 	call clear_leds
-	call draw_gsa					# draw gsa
-												# TODO: display score
-	add a0, zero, zero
-	call draw_tetromino		# Remove falling tetromino from the screen
-
-	call wait							# wait approx 0.2s
-
-	call get_input				# get button input
-
-	add  a0, zero, v0			# get corresponding action
-	call act							# try to execute user input action
-
-	addi  a0, zero, 0x02
-	call draw_tetromino		# draw falling tetromino
-
-	addi s0, s0, 1
-	addi t0, zero, RATE
-	bne  s0, t0, rate_loop
-
-	add  a0, zero, zero
-	call draw_tetromino		# Remove falling tetromino from the screen
-
-	addi a0, zero, 0x20
-	call act				# move tetromino downwards
-	add  s1, v0, zero		# store the act result
-
-	addi a0, zero, 0x02
-	call draw_tetromino		# draw falling tetromino
-
-	beq  s1, zero, move_down_loop	# if we havent reached the bottom, loop
-
-	addi a0, zero, 0x01
-	call draw_tetromino		# draw placed tetromino
-
-full_line_removal_loop:
-	call detect_full_line 	# check for a full ine
-	addi t0, zero, 8
-	beq  v0, t0, generate_new_tetromino		# generate new tetromino
-
-	add  a0, zero, v0
-	call remove_full_line					# remove full ine
-	jmpi full_line_removal_loop		# loop, until no more full ines
+	call draw_gsa
+	jmpi end
 
 
-generate_new_tetromino:
-	call generate_tetromino
 
-	addi  a0, zero, 0x03
-	call detect_collision
 
-	addi t0, zero, 4
-	bne  t0, v0, end
 
-	addi a0, zero, 2
-	call draw_tetromino
-	jmpi move_down_loop
 ; END:main
 
 ; BEGIN:end
@@ -79,15 +39,18 @@ reset_game:
 	# clear score
 	stw zero, SCORE(zero)
 
-	# clear the GSA
-	stw zero, GSA(zero)
-	stw zero, GSA+4(zero)
-	stw zero, GSA+8(zero)
-
 	# clear LEDS
-	stw zero, LEDS(zero)
-	stw zero, LEDS+4(zero)
-	stw zero, LEDS+8(zero)
+	call clear_leds
+	add t1, zero, zero
+
+clear_gsa_loop:
+	addi t0, zero, 96
+	slli t0, t0, 2
+	
+	# clear the GSA
+	stw zero, GSA(t1)
+	addi t1, t1, 4
+	bne	t1, t0, clear_gsa_loop
 
 	# clear SEVEN_SEGS
 	stw zero, SEVEN_SEGS(zero)
@@ -105,16 +68,18 @@ reset_game:
 
 
 ; BEGIN:detect_full_line
-addi sp, sp, -12
+
 detect_full_line:
+	addi sp, sp, -16
 	stw  s6, 0(sp)
 	stw  s7, 4(sp)
 	stw  s1, 8(sp)
+	stw  ra, 12(sp)
 	addi s6, zero, -1	# x-iterator
 	addi s7, zero, -1	# y-iterator
-	add  s1, zero, zero						# keep track of a single line
 
 y_loop:
+	add  s1, zero, zero						# keep track of a single line
 	addi s7, s7, 1
 	addi s6, zero, -1
 	addi v0, zero, 8	# default return value for v0 - y=8, smallest y-coordinate that is too high fit on the screen
@@ -122,7 +87,8 @@ y_loop:
 
 x_loop:
 	addi s6, s6, 1
-
+	add  a0, zero, s6
+	add  a1, zero, s7
 	call get_gsa
 
 	addi t0, zero, 1
@@ -132,7 +98,7 @@ x_loop:
 	addi t1, zero, 12
 	beq  s1, t1, full_line_detected
 
-	addi  s0, zero, 11
+	addi  t0, zero, 11
 	blt  s6, t0, x_loop
 	jmpi y_loop
 
@@ -143,7 +109,8 @@ return_detect_full_line:
 	ldw  s6, 0(sp)
 	ldw  s7, 4(sp)
 	ldw  s1, 8(sp)
-	addi sp, sp, 12
+	ldw  ra, 12(sp)
+	addi sp, sp, 16
 	ret
 ; END:detect_full_line
 
@@ -165,8 +132,10 @@ disable_x_loop:
 
 	call set_gsa
 	bne s0, zero, disable_x_loop
-
+	
+	call clear_leds
 	call draw_gsa
+	call wait
 	addi s0, zero, 12
 
 enable_x_loop:
@@ -178,7 +147,9 @@ enable_x_loop:
 	call set_gsa
 	bne s0, zero, enable_x_loop
 
+	call clear_leds
 	call draw_gsa
+	call wait
 
 
 # REMOVE line and shift lines
@@ -192,7 +163,6 @@ remove_x_loop:
 
 	add  a0, s0, zero
 	add  a1, s1, zero
-	stw  ra, 8(sp)
 	call get_gsa
 
 	add  a0, s0, zero
@@ -203,6 +173,18 @@ remove_x_loop:
 	jmpi remove_x_loop
 
 remove_line_finished:
+										#remove top-most line
+	addi s0, zero, 11
+	addi s5, zero, 0
+loopi:
+	add a0, s0, zero
+	add a1, s5, zero
+	addi a2, zero, 0
+	call set_gsa
+	addi s0, s0, -1
+	addi t0, zero, -1
+	blt t0, s0, loopi
+
 	ldw  s0, 0(sp)
 	ldw  s1, 4(sp)
 	ldw  ra, 8(sp)
@@ -340,7 +322,7 @@ set_gsa:
 	add t1, zero, a1	# y-coord
 	slli t0, t0, 3		# get 8*x
 	add t4, t0, t1		# get 8*x + y - index in GSA
-	slli t4, t4, 2		# TODO: WHY? 
+	slli t4, t4, 2		
 	stw a2, GSA(t4)
 	ret
 ; END:get_gsa
@@ -542,11 +524,11 @@ west_collision:
 	addi s0, s0, -1			# update x-coordinate for movement WEST
 	addi t0, zero, -1		# check if it is within bounds of the screen
 	beq  s0, t0, COLLISION
-	jmpi overlapping	
+	jmpi overlapping
 south_collision:
 	addi s1, s1, 1			# update y-coordinate for movement SOUTH
 	addi t0, zero, 8		# check if it is within bounds of the screen
-	beq  s0, t0, COLLISION
+	beq  s1, t0, COLLISION
 overlapping:
 
 	slli s2, s2, 4 			#s2 = 16*s2; offset by type * 16
@@ -559,6 +541,13 @@ overlapping:
 	add a2, s4, zero 		#p-value
 	add a0, s0, zero
 	add a1, s1, zero
+
+	addi t2, zero, 7		# to check for x coordinate out of bounds
+	addi t3, zero, 11		# to check for y coordinate out of bounds
+	blt  a0, zero, COLLISION
+	blt  t2, a1, COLLISION
+	blt  t3, a0, COLLISION
+
 	call get_gsa
 	beq v0, s6, COLLISION	# check if anchor point has been moved so that it collides
 
@@ -568,9 +557,15 @@ overlapping:
 	ldw t0, 0(t0) 			#x first offset
 	ldw t1, 0(t1)
 
+	addi t2, zero, 7		# to check for x coordinate out of bounds
+	addi t3, zero, 11		# to check for y coordinate out of bounds
 	add a2, s4, zero #p-value
 	add a0, s0, t0
 	add a1, s1, t1
+	blt  a0, zero, COLLISION
+	blt  t2, a1, COLLISION
+	blt  t3, a0, COLLISION
+
 	call get_gsa
 	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
 
@@ -580,11 +575,21 @@ overlapping:
 	ldw t0, 4(t0) #x offset
 	ldw t1, 4(t1)
 
+	addi t2, zero, 7		# to check for x coordinate out of bounds
+	addi t3, zero, 11		# to check for y coordinate out of bounds
+
 	add a2, s4, zero #p-value
 	add a0, s0, t0
 	add a1, s1, t1
-	call set_gsa
+	blt  a0, zero, COLLISION
+	blt  t2, a1, COLLISION
+	blt  t3, a0, COLLISION
+
+	call get_gsa
 	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
+
+	addi t2, zero, 7		# to check for x coordinate out of bounds
+	addi t3, zero, 11		# to check for y coordinate out of bounds
 
 	#call get_gsa on offset 2
 	ldw t0, DRAW_Ax(s5)		#address of Array of X-offset
@@ -592,9 +597,16 @@ overlapping:
 	ldw t0, 8(t0) #x  offset
 	ldw t1, 8(t1)
 
+	addi t2, zero, 7		# to check for x coordinate out of bounds
+	addi t3, zero, 11		# to check for y coordinate out of bounds
+
 	add a2, s4, zero #p-value
 	add a0, s0, t0
 	add a1, s1, t1
+	blt  a0, zero, COLLISION
+	blt  t2, a1, COLLISION
+	blt  t3, a0, COLLISION
+
 	call get_gsa
 	beq v0, s6, COLLISION	# check another pixel from the tetromino for collision
 

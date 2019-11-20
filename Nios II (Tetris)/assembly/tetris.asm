@@ -1,4 +1,3 @@
-; BEGIN:main
 main:
 	addi sp, zero, 0x2000
 	call reset_game
@@ -50,6 +49,8 @@ full_line_removal_loop:
 
 	add  a0, zero, v0
 	call remove_full_line					# remove full ine
+	call clear_leds
+	call draw_gsa
 	jmpi full_line_removal_loop		# loop, until no more full ines
 
 
@@ -118,9 +119,9 @@ detect_full_line:
 	stw  ra, 12(sp)
 	addi s6, zero, -1	# x-iterator
 	addi s7, zero, -1	# y-iterator
-	add  s1, zero, zero						# keep track of a single line
 
 y_loop:
+	add  s1, zero, zero						# keep track of a single line
 	addi s7, s7, 1
 	addi s6, zero, -1
 	addi v0, zero, 8	# default return value for v0 - y=8, smallest y-coordinate that is too high fit on the screen
@@ -139,7 +140,7 @@ x_loop:
 	addi t1, zero, 12
 	beq  s1, t1, full_line_detected
 
-	addi  s0, zero, 11
+	addi  t0, zero, 11
 	blt  s6, t0, x_loop
 	jmpi y_loop
 
@@ -173,8 +174,10 @@ disable_x_loop:
 
 	call set_gsa
 	bne s0, zero, disable_x_loop
-
+	
+	call clear_leds
 	call draw_gsa
+	call wait
 	addi s0, zero, 12
 
 enable_x_loop:
@@ -186,7 +189,9 @@ enable_x_loop:
 	call set_gsa
 	bne s0, zero, enable_x_loop
 
+	call clear_leds
 	call draw_gsa
+	call wait
 
 
 # REMOVE line and shift lines
@@ -200,7 +205,6 @@ remove_x_loop:
 
 	add  a0, s0, zero
 	add  a1, s1, zero
-	stw  ra, 8(sp)
 	call get_gsa
 
 	add  a0, s0, zero
@@ -211,6 +215,18 @@ remove_x_loop:
 	jmpi remove_x_loop
 
 remove_line_finished:
+										#remove top-most line
+	addi s0, zero, 11
+	addi s5, zero, 0
+loopi:
+	add a0, s0, zero
+	add a1, s5, zero
+	addi a2, zero, 0
+	call set_gsa
+	addi s0, s0, -1
+	addi t0, zero, -1
+	blt t0, s0, loopi
+
 	ldw  s0, 0(sp)
 	ldw  s1, 4(sp)
 	ldw  ra, 8(sp)
