@@ -19,7 +19,7 @@ rate_loop:
 	#addi  a0, zero, moveL
 	call act							# try to execute user input action
 
-	addi  a0, zero, 0x02
+	add  a0, zero, FALLING
 	call draw_tetromino		# draw falling tetromino
 
 	addi s0, s0, 1
@@ -29,16 +29,16 @@ rate_loop:
 	add  a0, zero, zero
 	call draw_tetromino		# Remove falling tetromino from the screen
 
-	addi a0, zero, 0x20
-	call act				# move tetromino downwards
+	add a0, zero, moveD
+	call act						# move tetromino downwards
 	add  s1, v0, zero		# store the act result
 
-	addi a0, zero, 0x02
+	add a0, zero, FALLING
 	call draw_tetromino		# draw falling tetromino
 
 	beq  s1, zero, move_down_loop	# if we havent reached the bottom, loop
 
-	addi a0, zero, 0x01
+	add a0, zero, PLACED
 	call draw_tetromino		# draw placed tetromino
 
 full_line_removal_loop:
@@ -56,7 +56,7 @@ full_line_removal_loop:
 generate_new_tetromino:
 	call generate_tetromino
 
-	addi  a0, zero, 0x03
+	addi  a0, zero, OVERLAP
 	call detect_collision
 
 	addi t0, zero, 4
@@ -80,7 +80,7 @@ reset_game:
 	# clear score
 	stw zero, SCORE(zero)
 	call display_score
-	
+
 	# clear LEDS
 	call clear_leds
 	add t1, zero, zero
@@ -353,9 +353,9 @@ set_pixel:
 	addi  t2,  zero, 1
  	sll   t2,  t2,  t1		# LED mask; shift 1 by position in the word
 	slli   t0,  t0, 2
-	ldw    t3,  0x2000(t0)		# get memory address of LED word
+	ldw    t3,  LEDS(t0)		# get memory address of LED word
 	or    t3,  t3,  t2			# set pixel
-	stw    t3,  0x2000(t0)		# store back in memory
+	stw    t3,  LEDS(t0)		# store back in memory
 	ret
 ; END:set_pixel
 
@@ -555,7 +555,7 @@ addi t1, zero, 1
 stw  t0, T_X(zero)
 stw  t1, T_Y(zero)
 stw  zero, T_orientation(zero)
-addi a0, zero, 0x02 ;; FALLING
+add  a0, zero, FALLING ;; FALLING
 
 addi sp, sp, -4
 stw  ra, 0(sp)
@@ -1114,6 +1114,18 @@ resetProcedure:
   .equ X_LIMIT, 12
   .equ Y_LIMIT, 8
 
+
+font_data:
+    .word 0xFC  ; 0
+    .word 0x60  ; 1
+    .word 0xDA  ; 2
+    .word 0xF2  ; 3
+    .word 0x66  ; 4
+    .word 0xB6  ; 5
+    .word 0xBE  ; 6
+    .word 0xE0  ; 7
+    .word 0xFE  ; 8
+    .word 0xF6  ; 9
 
 C_N_X:
   .word 0x00
