@@ -1,6 +1,8 @@
 ; BEGIN:main
 main:
 	addi sp, zero, 0x2000
+	addi sp, sp, -4
+	stw  ra, 0(sp)
 	call reset_game
 
 move_down_loop:
@@ -12,7 +14,7 @@ rate_loop:
 	add a0, zero, zero
 	call draw_tetromino		# Remove falling tetromino from the screen
 
-	call wait							# wait approx 0.2s
+	#call wait							# wait approx 0.2s
 
 	call get_input				# get button input
 
@@ -58,23 +60,34 @@ full_line_removal_loop:
 	call draw_gsa
 	jmpi full_line_removal_loop		# loop, until no more full ines
 
+	addi a0, zero, 6
+	addi a1, zero, 1
+	call get_gsa
+	addi t0, zero, PLACED
+	beq  v0, t0, end
+
+	addi a0, zero, 5
+	addi a1, zero, 1
+	call get_gsa
+	addi t0, zero, PLACED
+	beq  v0, t0, end
 
 generate_new_tetromino:
 	call generate_tetromino
 
-	addi  a0, zero, OVERLAP
-	call detect_collision
-
-	addi t0, zero, 4
-	bne  t0, v0, end
-
 	addi a0, zero, 2
 	call draw_tetromino
+
 	jmpi move_down_loop
 ; END:main
 
 ; BEGIN:end
 end:
+	call reset_game
+	jmpi move_down_loop
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4		
 	break
 ; END:end
 
@@ -85,20 +98,34 @@ reset_game:
 
 	# clear score
 	stw zero, SCORE(zero)
-	call display_score
 
-	# clear LEDS
-	call clear_leds
 	add t1, zero, zero
 
-clear_gsa_loop:
-	addi t0, zero, 96
-	slli t0, t0, 2
+#clear_gsa_loop:
+#	addi t0, zero, 96
+#	slli t0, t0, 2
 
 	# clear the GSA
-	stw zero, GSA(t1)
-	addi t1, t1, 4
-	bne	t1, t0, clear_gsa_loop
+#	stw zero, GSA(t1)
+#	addi t1, t1, 4
+#	bne	t1, t0, clear_gsa_loop
+	addi a2, zero, NOTHING
+
+	addi a1, zero, 7
+clearing_loop_y:
+	addi a0, zero, 11
+	blt  a1, zero, done_clearing_gsa
+	addi a1, a1, -1
+clearing_loop_x:
+	blt  a0, zero, clearing_loop_y
+	call set_gsa
+	addi a0, a0, -1
+	jmpi clearing_loop_x
+
+done_clearing_gsa:
+	call draw_gsa
+	# clear LEDS
+	call clear_leds
 
 	# clear SEVEN_SEGS
 	ldw t0, font_data(zero)
@@ -694,6 +721,7 @@ overlapping:
 	addi t2, zero, 7		# to check for x coordinate out of bounds
 	addi t3, zero, 11		# to check for y coordinate out of bounds
 	blt  a0, zero, COLLISION
+	blt  a1, zero, COLLISION
 	blt  t2, a1, COLLISION
 	blt  t3, a0, COLLISION
 
@@ -832,9 +860,6 @@ resetProcedure:
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
 
-	ldw s6, 0(sp)
-	ldw s7, 4(sp)
-	addi sp, sp, 8
 	jmpi endOfAction
 
 moveLProcedure:
