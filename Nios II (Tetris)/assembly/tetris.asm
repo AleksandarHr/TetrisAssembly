@@ -14,7 +14,7 @@ rate_loop:
 	add a0, zero, zero
 	call draw_tetromino		# Remove falling tetromino from the screen
 
-	#call wait							# wait approx 0.2s
+	call wait							# wait approx 0.2s
 
 	call get_input				# get button input
 
@@ -60,6 +60,8 @@ full_line_removal_loop:
 	call draw_gsa
 	jmpi full_line_removal_loop		# loop, until no more full ines
 
+generate_new_tetromino:
+
 	addi a0, zero, 6
 	addi a1, zero, 1
 	call get_gsa
@@ -72,7 +74,6 @@ full_line_removal_loop:
 	addi t0, zero, PLACED
 	beq  v0, t0, end
 
-generate_new_tetromino:
 	call generate_tetromino
 
 	addi a0, zero, 2

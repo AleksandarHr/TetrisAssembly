@@ -1,33 +1,94 @@
 ; BEGIN:main
 main:
 	addi sp, zero, 0x2000
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+	call reset_game
 
+move_down_loop:
+add  s0, zero, zero
+rate_loop:
+	call clear_leds
+	call draw_gsa					# draw gsa
+												# TODO: display score
+	add a0, zero, zero
+	call draw_tetromino		# Remove falling tetromino from the screen
 
-						
-	addi a1, zero, 0		#random pixel
-	addi a0, zero, 6
-	addi a2, zero, 0
-	call set_gsa
-	
-	
+	call wait							# wait approx 0.2s
 
+	call get_input				# get button input
 
-	call draw_gsa
-	call detect_full_line
-	add a0, v0, zero
-	call remove_full_line
+	add  a0, zero, v0			# get corresponding action
+	#addi  a0, zero, moveL
+	call act							# try to execute user input action
+
+	addi  a0, zero, FALLING
+	call draw_tetromino		# draw falling tetromino
+
+	addi s0, s0, 1
+	addi t0, zero, RATE
+	bne  s0, t0, rate_loop
+
+	add  a0, zero, zero
+	call draw_tetromino		# Remove falling tetromino from the screen
+
+	addi a0, zero, moveD
+	call act						# move tetromino downwards
+	add  s1, v0, zero		# store the act result
+
+	addi a0, zero, FALLING
+	call draw_tetromino		# draw falling tetromino
+
+	beq  s1, zero, move_down_loop	# if we havent reached the bottom, loop
+
+	addi a0, zero, PLACED
+	call draw_tetromino		# draw placed tetromino
+
+full_line_removal_loop:
+	call detect_full_line 	# check for a full ine
+	addi t0, zero, 8
+	beq  v0, t0, generate_new_tetromino		# generate new tetromino
+
+	add  a0, zero, v0
+	call remove_full_line					# remove full ine
+
+	# increment and display score
+	call increment_score
+	call display_score
+
 	call clear_leds
 	call draw_gsa
-	jmpi end
+	jmpi full_line_removal_loop		# loop, until no more full ines
 
+generate_new_tetromino:
 
+	addi a0, zero, 6
+	addi a1, zero, 1
+	call get_gsa
+	addi t0, zero, PLACED
+	beq  v0, t0, end
 
+	addi a0, zero, 5
+	addi a1, zero, 1
+	call get_gsa
+	addi t0, zero, PLACED
+	beq  v0, t0, end
 
+	call generate_tetromino
 
+	addi a0, zero, 2
+	call draw_tetromino
+
+	jmpi move_down_loop
 ; END:main
 
 ; BEGIN:end
 end:
+	call reset_game
+	jmpi move_down_loop
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4		
 	break
 ; END:end
 
@@ -39,25 +100,42 @@ reset_game:
 	# clear score
 	stw zero, SCORE(zero)
 
-	# clear LEDS
-	call clear_leds
 	add t1, zero, zero
 
-clear_gsa_loop:
-	addi t0, zero, 96
-	slli t0, t0, 2
-	
+#clear_gsa_loop:
+#	addi t0, zero, 96
+#	slli t0, t0, 2
+
 	# clear the GSA
-	stw zero, GSA(t1)
-	addi t1, t1, 4
-	bne	t1, t0, clear_gsa_loop
+#	stw zero, GSA(t1)
+#	addi t1, t1, 4
+#	bne	t1, t0, clear_gsa_loop
+	addi a2, zero, NOTHING
+
+	addi a1, zero, 7
+clearing_loop_y:
+	addi a0, zero, 11
+	blt  a1, zero, done_clearing_gsa
+	addi a1, a1, -1
+clearing_loop_x:
+	blt  a0, zero, clearing_loop_y
+	call set_gsa
+	addi a0, a0, -1
+	jmpi clearing_loop_x
+
+done_clearing_gsa:
+	call draw_gsa
+	# clear LEDS
+	call clear_leds
 
 	# clear SEVEN_SEGS
-	stw zero, SEVEN_SEGS(zero)
-	stw zero, SEVEN_SEGS+4(zero)
-	stw zero, SEVEN_SEGS+8(zero)
-	stw zero, SEVEN_SEGS+12(zero)
-
+	ldw t0, font_data(zero)
+	stw t0, SEVEN_SEGS(zero)
+	stw t0, SEVEN_SEGS+4(zero)
+	stw t0, SEVEN_SEGS+8(zero)
+	stw t0, SEVEN_SEGS+12(zero)
+	
+	call display_score
 	# generate and draw a random tetromino
 	call generate_tetromino
 
@@ -68,7 +146,6 @@ clear_gsa_loop:
 
 
 ; BEGIN:detect_full_line
-
 detect_full_line:
 	addi sp, sp, -16
 	stw  s6, 0(sp)
@@ -114,7 +191,7 @@ return_detect_full_line:
 	ret
 ; END:detect_full_line
 
-; BEGIN:remove_full_line:
+; BEGIN:remove_full_line
 remove_full_line:
 	addi sp, sp, -12
 	stw  s0, 0(sp)
@@ -123,7 +200,7 @@ remove_full_line:
 	add  s1, zero, a0		# y-coordinate of line to be removed
 	addi s0, zero, 12
 
-# MAKE LINE BLINK
+# MAKE LINE BLINK - OFF_1
 disable_x_loop:
 	addi s0, s0, -1
 	add  a0, zero, s0
@@ -132,12 +209,13 @@ disable_x_loop:
 
 	call set_gsa
 	bne s0, zero, disable_x_loop
-	
+
 	call clear_leds
 	call draw_gsa
 	call wait
 	addi s0, zero, 12
 
+# MAKE LINE BLINK - ON_1
 enable_x_loop:
 	addi s0, s0, -1
 	add  a0, zero, s0
@@ -151,6 +229,37 @@ enable_x_loop:
 	call draw_gsa
 	call wait
 
+# BLINK AGAIN
+	addi s0, zero, 12
+
+# MAKE LINE BLINK - OFF_2
+disable_x_loop_two:
+	addi s0, s0, -1
+	add  a0, zero, s0
+	add  a1, zero, s1
+	add  a2, zero, zero
+
+	call set_gsa
+	bne s0, zero, disable_x_loop_two
+
+	call clear_leds
+	call draw_gsa
+	call wait
+	addi s0, zero, 12
+
+# MAKE LINE BLINK - ON_2
+enable_x_loop_two:
+	addi s0, s0, -1
+	add  a0, zero, s0
+	add  a1, zero, s1
+	addi a2, zero, 1
+
+	call set_gsa
+	bne s0, zero, enable_x_loop_two
+
+	call clear_leds
+	call draw_gsa
+	call wait
 
 # REMOVE line and shift lines
 remove_y_loop:
@@ -173,7 +282,7 @@ remove_x_loop:
 	jmpi remove_x_loop
 
 remove_line_finished:
-										#remove top-most line
+	#remove top-most line
 	addi s0, zero, 11
 	addi s5, zero, 0
 loopi:
@@ -190,7 +299,7 @@ loopi:
 	ldw  ra, 8(sp)
 	addi sp, sp, 12
 	ret
-; END:remove_full_line:
+; END:remove_full_line
 
 
 ; BEGIN:increment_score
@@ -198,7 +307,80 @@ increment_score:
 	ldw  t0, SCORE(zero)	# load current game score
 	addi t0, t0, 1			# increment current game score by 1
 	stw  t0, SCORE(zero)	# store the updated game score
+	ret
 ; END:increment_score
+
+; BEGIN:display_score
+display_score:
+	addi sp, sp, -24
+	stw  s0, 0(sp)
+	stw  s1, 4(sp)
+	stw  s2, 8(sp)
+	stw  s3, 12(sp)
+	stw  s4, 16(sp)
+	stw  s5, 20(sp)
+
+	ldw  t0, SCORE(zero)	# load current game score
+	addi s5, zero, 1000
+	addi s0, zero, 100
+	addi s1, zero, 10
+	add  t0, t0, s0
+	addi s2, zero, -1 	# counter for hundreds digit
+	addi s3, zero, -1		# counter for tens digit
+	addi s4, zero, -1	# counter for thousands digit
+
+	add  t0, t0, s5
+thousands_loop:
+	addi s4, s4, 1
+	addi t0, t0, -1000
+	bge  t0, s5, thousands_loop
+
+	# here we have the thousands digit in s4
+	slli s4, s4, 2
+	ldw  s4, font_data(s4)
+
+	add  t0, t0, s0
+hundreds_loop:
+	addi s2, s2, 1
+	addi t0, t0, -100
+	bge  t0, s0, hundreds_loop
+
+	# here we have the hundreds digit in s2
+	slli s2, s2, 2
+	addi s2, s2, -1
+	ldw  s2, font_data(s2)
+
+	add t0, t0, s1
+tens_loop:
+	addi s3, s3, 1
+	addi t0, t0, -10
+	bge  t0, s1, tens_loop
+
+	# here we have the tens digit in s3
+	slli s3, s3, 2
+	ldw  s3, font_data(s3)
+
+	# here we have the singles digit in t0
+	slli t0, t0, 2
+	ldw  t0, font_data(t0)
+
+	stw  s4, SEVEN_SEGS(zero)
+	stw  s2, SEVEN_SEGS+4(zero)
+	stw  s3, SEVEN_SEGS+8(zero)
+	stw  t0, SEVEN_SEGS+12(zero)
+
+end_display_score:
+	ldw  s0, 0(sp)
+	ldw  s1, 4(sp)
+	ldw  s2, 8(sp)
+	ldw  s3, 12(sp)
+	ldw  s4, 16(sp)
+	ldw  s5, 20(sp)
+	addi sp, sp, 24
+
+	ret
+; END:display_score
+
 
 ; BEGIN:get_input
 get_input:
@@ -258,7 +440,7 @@ clear_leds:
 	addi t0, t0, 4
 	stw zero,  0x2000(t0)
 	ret
-; END: clear_leds
+; END:clear_leds
 
 ; BEGIN:set_pixel
 set_pixel:
@@ -269,9 +451,9 @@ set_pixel:
 	addi  t2,  zero, 1
  	sll   t2,  t2,  t1		# LED mask; shift 1 by position in the word
 	slli   t0,  t0, 2
-	ldw    t3,  0x2000(t0)		# get memory address of LED word
+	ldw    t3,  LEDS(t0)		# get memory address of LED word
 	or    t3,  t3,  t2			# set pixel
-	stw    t3,  0x2000(t0)		# store back in memory
+	stw    t3,  LEDS(t0)		# store back in memory
 	ret
 ; END:set_pixel
 
@@ -299,11 +481,11 @@ in_gsa:
 	ret
 ; END:in_gsa
 
-; BEGIN:out
+; BEGIN:helper
 out:
 	addi v0, zero, 1
 	ret
-; END:out
+; END:helper
 
 ; BEGIN:get_gsa
 get_gsa:
@@ -322,10 +504,10 @@ set_gsa:
 	add t1, zero, a1	# y-coord
 	slli t0, t0, 3		# get 8*x
 	add t4, t0, t1		# get 8*x + y - index in GSA
-	slli t4, t4, 2		
+	slli t4, t4, 2
 	stw a2, GSA(t4)
 	ret
-; END:get_gsa
+; END:set_gsa
 
 
 ; BEGIN:draw_gsa
@@ -337,7 +519,6 @@ draw_gsa:
 
 	addi s0, zero, 12	# x-counter 0,1,2,...,11
 	addi s1, zero, 8	# y-counter 0,1,2,...,7
-
 
 outer:
 	beq  s0, zero, finish
@@ -367,7 +548,7 @@ finish:
 	ret
 ; END:draw_gsa
 
-; BEGIN:2
+; BEGIN:draw_tetromino
 draw_tetromino:
 	addi sp, sp, -28
 	stw s0, 0(sp)
@@ -450,38 +631,34 @@ draw_tetromino:
 
 
 ;BEGIN:generate_tetromino
-
 generate_tetromino:
-addi t1, zero, 4
+	addi t1, zero, 4
 
-;BEGIN:regenerate
 regenerate:
-add  t0, zero, zero
-stw  t0, RANDOM_NUM(zero)
-ldw  t0, RANDOM_NUM(zero)
-slli t0, t0, 28
-srli t0, t0, 28
-blt  t1, t0, regenerate
-;END:regenerate
+	add  t0, zero, zero
+	stw  t0, RANDOM_NUM(zero)
+	ldw  t0, RANDOM_NUM(zero)
+	slli t0, t0, 28
+	srli t0, t0, 28
+	blt  t1, t0, regenerate
 
 ;; initialize (6,1) for x,y coords, T_orientation and T_type
-stw  t0, T_type(zero)
-addi t0, zero, 6
-addi t1, zero, 1
-stw  t0, T_X(zero)
-stw  t1, T_Y(zero)
-stw  zero, T_orientation(zero)
-addi a0, zero, 0x02 ;; FALLING
+	stw  t0, T_type(zero)
+	addi t0, zero, 6
+	addi t1, zero, 1
+	stw  t0, T_X(zero)
+	stw  t1, T_Y(zero)
+	stw  zero, T_orientation(zero)
+	addi  a0, zero, FALLING ;; FALLING
 
-addi sp, sp, -4
-stw  ra, 0(sp)
+	addi sp, sp, -4
+	stw  ra, 0(sp)
 
-call draw_tetromino
+	call draw_tetromino
 
-ldw  ra, 0(sp)
-addi sp, sp, 4
-ret
-
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+	ret
 ;END:generate_tetromino
 
 ;BEGIN:detect_collision
@@ -545,6 +722,7 @@ overlapping:
 	addi t2, zero, 7		# to check for x coordinate out of bounds
 	addi t3, zero, 11		# to check for y coordinate out of bounds
 	blt  a0, zero, COLLISION
+	blt  a1, zero, COLLISION
 	blt  t2, a1, COLLISION
 	blt  t3, a0, COLLISION
 
@@ -623,7 +801,7 @@ NO_COLLISION:
 	addi sp, sp, 32
 
 	addi v0, zero, NONE
-	ret
+	jmpi return_collision
 
 COLLISION:
 	# if collision or an overlap was detected, return type of collision/overlap
@@ -639,10 +817,9 @@ COLLISION:
 	ldw  ra, 28(sp)
 	addi sp, sp, 32
 
+return_collision:
 	ret
-
 ;END:detect_collision
-
 
 
 ;BEGIN:act
@@ -670,20 +847,21 @@ act:
 
 	addi t0, zero, moveD
 	beq t0, a0, moveDProcedure
-;END:act
-
-endOfAction:
-	add v0, s6, zero		#transfer s6 to return value
-							#ra isn't popped, because endOfAction must return to wherever the base procedure was called
-	ldw s6, 0(sp)
-	ldw s7, 4(sp)
-	ldw s0, 8(sp)
-	addi sp, sp, 12
-	ret
 
 movingSuccess:
 	add s6, zero, zero
 	jmpi endOfAction					 #v0 already taken care of
+
+resetProcedure:
+	addi sp, sp, -4
+	stw  ra, 0(sp)
+
+	call reset_game
+
+	ldw  ra, 0(sp)
+	addi sp, sp, 4
+
+	jmpi endOfAction
 
 moveLProcedure:
 	addi sp, sp, -4
@@ -933,7 +1111,17 @@ rotateBackLeft:
 	addi s6, zero, 1 				#fail
 	jmpi endOfAction
 
+endOfAction:
+	add v0, s6, zero		#transfer s6 to return value
+							#ra isnt popped, because endOfAction must return to wherever the base procedure was called
+	ldw s6, 0(sp)
+	ldw s7, 4(sp)
+	ldw s0, 8(sp)
+	addi sp, sp, 12
+	ret
+; END:act
 
+; BEGIN:rotate_tetromino
 rotate_tetromino:
 	addi t0, zero, rotL
 	beq a0, t0, rotate_tetromino_left
@@ -942,28 +1130,17 @@ rotate_tetromino:
 	addi t0, t0, 1
 	andi t0, t0, 3
 	stw t0, T_orientation(zero)
-	ret
+	jmpi end_rotation
 
 rotate_tetromino_left:
 	ldw t0, T_orientation(zero) 	#rotate to the left
 	addi t0, t0, -1
 	andi t0, t0, 3
 	stw t0, T_orientation(zero)
+
+end_rotation:
 	ret
-
-resetProcedure:
-	addi sp, sp, -4
-	stw  ra, 0(sp)
-
-	call reset_game
-
-	ldw  ra, 0(sp)
-	addi sp, sp, 4
-
-	ldw s6, 0(sp)
-	ldw s7, 4(sp)
-	addi sp, sp, 8
-	ret
+; END:rotate_tetromino
 
   ;; game state memory location
   .equ T_X, 0x1000                  ; falling tetrominoe position on x
@@ -1030,6 +1207,18 @@ resetProcedure:
   .equ X_LIMIT, 12
   .equ Y_LIMIT, 8
 
+
+font_data:
+    .word 0xFC  ; 0
+    .word 0x60  ; 1
+    .word 0xDA  ; 2
+    .word 0xF2  ; 3
+    .word 0x66  ; 4
+    .word 0xB6  ; 5
+    .word 0xBE  ; 6
+    .word 0xE0  ; 7
+    .word 0xFE  ; 8
+    .word 0xF6  ; 9
 
 C_N_X:
   .word 0x00
