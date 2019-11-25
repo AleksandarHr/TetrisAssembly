@@ -94,8 +94,13 @@ end:
 
 ; BEGIN:reset_game
 reset_game:
-	addi sp, sp, -4
+	addi sp, sp, -12
 	stw  ra, 0(sp)
+	stw s0, 4(sp)
+	stw s1, 8(sp)
+
+	add s0, a0, zero
+	add s1, a1, zero
 
 	# clear score
 	stw zero, SCORE(zero)
@@ -116,11 +121,14 @@ reset_game:
 clearing_loop_y:
 	addi a0, zero, 11
 	blt  a1, zero, done_clearing_gsa
-	addi a1, a1, -1
+	addi s1, s1, -1
 clearing_loop_x:
 	blt  a0, zero, clearing_loop_y
+	add a0, s0, zero
+	add a1, s1, zero
+	addi a2, zero, NOTHING
 	call set_gsa
-	addi a0, a0, -1
+	addi s0, s0, -1
 	jmpi clearing_loop_x
 
 done_clearing_gsa:
@@ -139,8 +147,11 @@ done_clearing_gsa:
 	# generate and draw a random tetromino
 	call generate_tetromino
 
-	ldw  ra, 0(sp)
-	addi sp, sp, 4
+
+	stw  ra, 0(sp)
+	stw s0, 4(sp)
+	stw s1, 8(sp)
+	addi sp, sp, 12
 	ret
 ; END:reset_game
 
