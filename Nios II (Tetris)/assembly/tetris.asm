@@ -117,13 +117,13 @@ reset_game:
 #	bne	t1, t0, clear_gsa_loop
 	addi a2, zero, NOTHING
 
-	addi a1, zero, 7
+	addi s1, zero, 7
 clearing_loop_y:
-	addi a0, zero, 11
-	blt  a1, zero, done_clearing_gsa
+	addi s0, zero, 11
+	blt  s1, zero, done_clearing_gsa
 	addi s1, s1, -1
 clearing_loop_x:
-	blt  a0, zero, clearing_loop_y
+	blt  s0, zero, clearing_loop_y
 	add a0, s0, zero
 	add a1, s1, zero
 	addi a2, zero, NOTHING
@@ -148,9 +148,9 @@ done_clearing_gsa:
 	call generate_tetromino
 
 
-	stw  ra, 0(sp)
-	stw s0, 4(sp)
-	stw s1, 8(sp)
+	ldw  ra, 0(sp)
+	ldw s0, 4(sp)
+	ldw s1, 8(sp)
 	addi sp, sp, 12
 	ret
 ; END:reset_game
