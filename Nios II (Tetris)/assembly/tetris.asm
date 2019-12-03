@@ -117,11 +117,11 @@ reset_game:
 #	bne	t1, t0, clear_gsa_loop
 	addi a2, zero, NOTHING
 
-	addi s1, zero, 7
+	addi s1, zero, 8
 clearing_loop_y:
 	addi s0, zero, 11
-	blt  s1, zero, done_clearing_gsa
 	addi s1, s1, -1
+	blt  s1, zero, done_clearing_gsa
 clearing_loop_x:
 	blt  s0, zero, clearing_loop_y
 	add a0, s0, zero
@@ -146,7 +146,8 @@ done_clearing_gsa:
 	call display_score
 	# generate and draw a random tetromino
 	call generate_tetromino
-
+	addi a0, zero, FALLING
+	call draw_tetromino
 
 	ldw  ra, 0(sp)
 	ldw s0, 4(sp)
@@ -665,8 +666,6 @@ regenerate:
 	addi sp, sp, -4
 	stw  ra, 0(sp)
 
-	call draw_tetromino
-
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
 	ret
@@ -931,7 +930,7 @@ moveLeft:
 	ldw t0, T_X(zero)
 	addi t0, t0, -1
 	stw t0, T_X(zero)
-	call draw_tetromino
+
 
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
@@ -945,7 +944,7 @@ moveRight:
 	ldw t0, T_X(zero)
 	addi t0, t0, 1
 	stw t0, T_X(zero)
-	call draw_tetromino
+
 
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
@@ -959,7 +958,7 @@ moveDown:
 	ldw t0, T_Y(zero)
 	addi t0, t0, 1
 	stw t0, T_Y(zero)
-	call draw_tetromino
+
 
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
@@ -1006,14 +1005,12 @@ rotRProcedure:
 	blt t0, t1, tryMovingRight
 	jmpi tryMovingLeft
 
-
 rotateLeftOk:
 	addi sp, sp, -4
 	stw  ra, 0(sp)
 
 	addi v0, zero, 0				#success
 	add a0, s7, zero
-	call draw_tetromino
 
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
@@ -1025,7 +1022,6 @@ rotateRightOk:
 
 	addi s6, zero, 0				#success
 	add a0, s7, zero
-	call draw_tetromino
 
 	ldw  ra, 0(sp)
 	addi sp, sp, 4
